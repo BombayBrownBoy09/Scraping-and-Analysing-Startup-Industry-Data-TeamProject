@@ -1,6 +1,6 @@
 numpy==1.18.2
 pandas==1.0.4
-streamlit==0.79.0
+streamlit==0.87.0
 plotly==4.6.0
 statsmodels==0.12.1
 lxml==4.6.2

@@ -12,6 +12,7 @@ import matplotlib.font_manager as fm
 import warnings
 import datetime
 from pytrends.request import TrendReq # Trends API
+from scipy import stats
 import urllib.request
 from bs4 import BeautifulSoup
 from sklearn.model_selection import train_test_split
@@ -19,6 +20,8 @@ import streamlit.components.v1 as components
 from sklearn.metrics import f1_score
 import lightgbm as lgb
 from scipy.misc import derivative
+import plotly.graph_objects as go
+
 
 warnings.filterwarnings("ignore")
 
@@ -77,17 +80,15 @@ st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> To start,
 
 
 @st.cache(persist=True) #We use this to cache the info and not load the data every time we scroll up/down
-def load_data(nrows):
+def load_data():
     """
     Function to load the primary data:
-    :param nrows: Number of rows to load
     """
-    URL_cb = 'https://raw.githubusercontent.com/realonbebeto/Startup-App/main/recom_data/main_data.csv'
-    clean_cb = pd.read_csv(URL_cb, parse_dates=['funding_rounds', 'founded_at', 'first_funding_at','last_funding_at'])
+    clean_cb = pd.read_csv('Data/primary_data.csv', parse_dates=['funding_rounds', 'founded_at', 'first_funding_at','last_funding_at'])
     return clean_cb
 
 #Load 10,000 rows of data & make copies to use with different sections
-clean_cb = load_data(100000)
+clean_cb = load_data().copy()
 
 #[0, 1, 2, 3] = ['acquired', 'closed', 'ipo', 'operating']
 # We'll only look at companies that had their first funding round in the year 2000 and beyond
@@ -237,7 +238,7 @@ def feature_eng_proc(df):
 df_clean_cb_gdp_rsi = feature_eng_proc(df_clean_cb_gdp_rsi).copy()
 
 # Filter by Category
-category = st.selectbox("", ['health', 'tech'], key='cluster_box_shap', index=0) #Add a dropdown element to select the category
+category = st.selectbox("", ['health', 'tech'], key='category_selector', index=0) #Add a dropdown element to select the category
 
 # Categories
 if category == 'health':
@@ -248,6 +249,61 @@ else:
 # Filter dataframe based on the selected category
 df_train = df_clean_cb_gdp_rsi[df_clean_cb_gdp_rsi.category_code.isin(category)].copy()
 
+
+# Descriptive Statistics by Status
+st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> Now please select a status of interest. This is the current status of the companies. </p>', unsafe_allow_html=True)
+
+status_cats = st.selectbox("", ['Acquired', 'Closed', 'IPO', 'Operating'], key='status_selector', index=2) 
+
+if status_cats == 'Acquired':
+  status = 0
+elif status_cats == 'Closed':
+  status = 1
+elif status_cats == 'IPO':
+  status = 2
+else:
+  status = 3
+
+# Top 5 Companies that IPO'd in the selected Industry
+@st.cache(persist=True) 
+def load_data_permalinks():
+    """
+    Function to load the permalinks data
+    """
+    ids = pd.read_csv("Data/permalinks.csv")
+    return ids
+
+ids = load_data_permalinks().copy()
+
+st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> And these are some succesful companies that have IPO’d:</p>', unsafe_allow_html=True)
+
+clean_cb_ids = clean_cb[clean_cb.category_code.isin(category)].copy()
+clean_cb_ids = clean_cb_ids[clean_cb_ids.status == status].sort_values(by="funding_total_usd", ascending=False)
+clean_cb_ids = clean_cb_ids.merge(ids, how='left')
+clean_cb_ids = clean_cb_ids[['normalized_name','permalink','founded_at','first_funding_at','funding_rounds','funding_total_usd']]
+clean_cb_ids.loc[:,'founded_at'] = clean_cb_ids['founded_at'].dt.year
+clean_cb_ids.loc[:,'first_funding_at'] = clean_cb_ids['first_funding_at'].dt.year
+year_most_funding = stats.mode(clean_cb_ids.first_funding_at)[0][0] # Year with more funding rounds
+clean_cb_ids.loc[:,'funding_rounds'] = clean_cb_ids.loc[:,'funding_rounds'].astype('int')
+avg_funding_round = int(np.mean(clean_cb_ids['funding_rounds'])) # Average # of Funding Rounds
+clean_cb_ids.loc[:,'funding_total_usd'] = clean_cb_ids.loc[:,'funding_total_usd'].astype('int')
+avg_funding = np.round(np.mean(clean_cb_ids['funding_total_usd']),2) # Average Funding
+clean_cb_ids['funding_total_usd'] = clean_cb_ids['funding_total_usd'].apply(lambda x: "${:,.1f}k".format((x/1000)))
+clean_cb_ids = clean_cb_ids.rename(columns={"normalized_name":"Company",
+                                    "permalink": "More info At",
+                                    "founded_at": "Founded In",
+                                    "first_funding_at":"Year of First Funding",
+                                    "funding_rounds":"Funding Rounds",
+                                    "funding_total_usd": "Funding Total in $US"})
+
+
+col1, col2, col3 = st.columns(3)
+col1.metric("Most Popular Year", "{}".format(year_most_funding), "1.2%")
+col2.metric("Avg. Funding", "${:,.1f}k".format((avg_funding/1000)), "-8%")
+col3.metric("Avg. # of Rounds", "{}".format(avg_funding_round), "4%")
+
+
+## MODELING
 # Create features & target and split dataset
 X = df_train.drop(['status','category_code'], axis=1).copy()
 y = df_train['status'].copy()
@@ -270,8 +326,6 @@ def evalerror(preds, df_train):
     f_score = f1_score(labels , preds,  average = 'weighted')
     return 'f1_score', f_score, True
 
-
-# MODELING
 # Define Params
 params = {'boosting_type': 'gbdt',
           'objective': 'multiclass',
@@ -294,7 +348,7 @@ gbm = lgb.train(params,
                 early_stopping_rounds=10)
 
 
-# Explain the model's predictions with SHAP
+# SHAP
 #[0, 1, 2, 3] = ['acquired', 'closed', 'ipo', 'operating']
 # Relationships = "Representation of the people involved in the team for that startup"
 st.markdown('<h2 style="font-family:Avenir,Helvetica Neue,sans-serif;"> Startup Attribute’s Impact </h2>', unsafe_allow_html=True)
