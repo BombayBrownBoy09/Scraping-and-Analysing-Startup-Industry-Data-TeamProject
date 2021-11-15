@@ -11,4 +11,6 @@ shap==0.40.0
 matplotlib==3.3.4
 lightgbm==2.2.3
 pytrends==4.7.3
+urllib3==1.24.3
+bs4==0.0.1
 
