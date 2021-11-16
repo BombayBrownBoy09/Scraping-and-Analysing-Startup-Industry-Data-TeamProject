@@ -86,7 +86,7 @@ st.markdown(
 #Create initial titles/subtitles
 st.markdown('<h1 style="font-family:Avenir,Helvetica Neue,sans-serif;"> Startup Industry Insights </h1>', unsafe_allow_html=True)
 st.text("")
-st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> The following application provides insights into the specific impact different attributes of a startup contribute to either be acquired, IPO, close, or continue to operate. </p>', unsafe_allow_html=True)
+st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> The following application makes it easy to access aggregate financial information about startups, it is meant to help users understand a given industry under the lens of historical data related to startup attributes (i.e. funding, age, etc), economic indicators (GDP), and the relative interest of startups in general measured by the volume of search engine queries. </p>', unsafe_allow_html=True)
 
 st.write("")
 st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> To start, please select a category/industry of interest: </p>', unsafe_allow_html=True)
@@ -393,15 +393,15 @@ fig_group_stat.update_traces(marker_color='#1c2d54', opacity=.99)
 fig_group_stat.update_layout(title_text='Median {} by Status'.format(selected_col))
 st.plotly_chart(fig_group_stat, use_container_width=True) 
 
-
 st.markdown("""<hr style="height:1px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
-st.write("")
 
 
 # SHAP
 #[0, 1, 2, 3] = ['acquired', 'closed', 'ipo', 'operating']
 # Relationships = "Representation of the people involved in the team for that startup"
-st.header('Startup Attribute’s Impact')
+st.header('Attribute Impact')
+st.write("")
+
 st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> On this particular industry, according to our data these are some of the attributes of startup that seem to have a greater impact on a given company status. </p>', unsafe_allow_html=True)
 
 X = df_train.drop(['status','category_code'], axis=1).copy()
@@ -415,6 +415,10 @@ st.write("")
 st.write("")
 st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> As we can see, different attributes contribute differently to classifying whether a company will be on each of the possible categories (status). For more details on how this is calculated please see the SHAP paper <a href="https://arxiv.org/pdf/1705.07874.pdf" target="_blank"> here</a>.</p>', unsafe_allow_html=True)
 
+st.write("")
+st.write("")
+st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> <b>* Disclaimer: </b> <i> This tool is not meant to replace a financial advisor, its purpose is rather to provide some direction into which key metrics should be considered when analyzing a potential industry. All insights are meant to be descriptive of the data and not to be used for inference. Nonetheless, we hope the tool can be leveraged by all types of users to efficiently get a better starting point for more informed conversations and research.</i> </p>', unsafe_allow_html=True)
+
 st.text("")
 st.text("")
-st.write('<h4 style="font-family:Avenir,Helvetica Neue,sans-serif;"> For any suggestions on improvements please contact us at <a href="mailto:aipi@duke.edu">@duke.edu</a> </h4>', unsafe_allow_html=True)
+st.write('<h4 style="font-family:Avenir,Helvetica Neue,sans-serif;"> For any suggestions on improvements please see the project <a href= https://github.com/omartinez182/510-Startup-Project target="_blank"> Github repo</a>.</h4>', unsafe_allow_html=True)
