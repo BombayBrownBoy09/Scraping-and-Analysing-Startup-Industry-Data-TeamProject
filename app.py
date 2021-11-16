@@ -27,7 +27,7 @@ import pickle
 warnings.filterwarnings("ignore")
 
 #Set title and favicon
-st.set_page_config(page_title='Startup Discovery Tool', page_icon='https://duke.edu/_themes/duke/img/favicon.ico')
+st.set_page_config(page_title='Startup Industry Insights', page_icon='https://duke.edu/_themes/duke/img/favicon.ico')
 st.write('<html lang="es"><html translate="no">', unsafe_allow_html=True) #Avoid translations
 
 ###################### CSS Styling ############################################################################################################
