@@ -1,6 +1,7 @@
 #Load libraries
 import tldextract
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -20,13 +21,14 @@ import streamlit.components.v1 as components
 from sklearn.metrics import f1_score
 import lightgbm as lgb
 from scipy.misc import derivative
-import plotly.graph_objects as go
+import pickle
 
 
 warnings.filterwarnings("ignore")
 
 #Set title and favicon
 st.set_page_config(page_title='Startup Discovery Tool', page_icon='https://duke.edu/_themes/duke/img/favicon.ico')
+st.write('<html lang="es"><html translate="no">', unsafe_allow_html=True) #Avoid translations
 
 ###################### CSS Styling ############################################################################################################
 #Hide rainbow bar
@@ -66,6 +68,15 @@ st.markdown(
     body {
     font-family: Avenir,Helvetica Neue,sans-serif;
     }
+    title {
+    font-family: Avenir,Helvetica Neue,sans-serif;
+    }
+    header {
+    font-family: Avenir,Helvetica Neue,sans-serif;
+    }
+    subheader {
+    font-family: Avenir,Helvetica Neue,sans-serif;
+    }
   </style>""",
   unsafe_allow_html=True
 )
@@ -76,6 +87,8 @@ st.markdown(
 st.markdown('<h1 style="font-family:Avenir,Helvetica Neue,sans-serif;"> Startup Discovery Tool </h1>', unsafe_allow_html=True)
 st.text("")
 st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> The following application provides insights into the specific impact different attributes of a startup contribute to either be acquired, IPO, close, or continue to operate. </p>', unsafe_allow_html=True)
+
+st.write("")
 st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> To start, please select a category/industry of interest: </p>', unsafe_allow_html=True)
 
 
@@ -238,22 +251,29 @@ def feature_eng_proc(df):
 df_clean_cb_gdp_rsi = feature_eng_proc(df_clean_cb_gdp_rsi).copy()
 
 # Filter by Category
-category = st.selectbox("", ['health', 'tech'], key='category_selector', index=0) #Add a dropdown element to select the category
+categories = st.selectbox("", ['Health', 'Tech'], key='category_selector', index=0) #Add a dropdown element to select the category
 
 # Categories
-if category == 'health':
+if categories == 'Health':
     category = ['health', 'medical', 'biotech']
+    # Load SHAP values for the selected category
+    with open("Data/SHAP/health_shap.txt", "rb") as fp:   # Unpickling
+        shap_values = pickle.load(fp)
 else:
     category = ['web','mobile','software','ecommerce']
+    # Load SHAP values for the selected category
+    with open("Data/SHAP/tech_shap.txt", "rb") as fp:   # Unpickling
+        shap_values = pickle.load(fp)
 
 # Filter dataframe based on the selected category
 df_train = df_clean_cb_gdp_rsi[df_clean_cb_gdp_rsi.category_code.isin(category)].copy()
 
-
 # Descriptive Statistics by Status
-st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> Now please select a status of interest. This is the current status of the companies. </p>', unsafe_allow_html=True)
+st.write("")
+st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> Now please select a status of interest, namely the status of the companies. </p>', unsafe_allow_html=True)
 
 status_cats = st.selectbox("", ['Acquired', 'Closed', 'IPO', 'Operating'], key='status_selector', index=2) 
+st.write("")
 
 if status_cats == 'Acquired':
   status = 0
@@ -275,7 +295,11 @@ def load_data_permalinks():
 
 ids = load_data_permalinks().copy()
 
-st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> And these are some succesful companies that have IPO’d:</p>', unsafe_allow_html=True)
+
+st.header('Descriptive Statistics')
+
+st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> Key metrics for the selected category: </p>', unsafe_allow_html=True)
+st.write("")
 
 clean_cb_ids = clean_cb[clean_cb.category_code.isin(category)].copy()
 clean_cb_ids = clean_cb_ids[clean_cb_ids.status == status].sort_values(by="funding_total_usd", ascending=False)
@@ -298,67 +322,99 @@ clean_cb_ids = clean_cb_ids.rename(columns={"normalized_name":"Company",
 
 
 col1, col2, col3 = st.columns(3)
-col1.metric("Most Popular Year", "{}".format(year_most_funding), "1.2%")
-col2.metric("Avg. Funding", "${:,.1f}k".format((avg_funding/1000)), "-8%")
-col3.metric("Avg. # of Rounds", "{}".format(avg_funding_round), "4%")
+col1.metric("Year with The Most Funding Rounds", "{}".format(year_most_funding), "")
+col2.metric("Avg. Funding", "${:,.1f}k".format((avg_funding/1000)), "")
+col3.metric("Avg. # of Rounds", "{}".format(avg_funding_round), "")
+
+top_company = clean_cb_ids.iloc[:1,:1].values[0][0].title()
+cb_url_company = clean_cb_ids.iloc[:1,1:2].values[0][0]
+st.markdown('<h4 style="font-family:Avenir,Helvetica Neue,sans-serif;"> Popular Company in this Industry & Status: <a href="{}" target="_blank"> {}</a> </h4>'.format(cb_url_company, top_company), unsafe_allow_html=True)
+st.write("")
+st.write("")
 
 
-## MODELING
-# Create features & target and split dataset
-X = df_train.drop(['status','category_code'], axis=1).copy()
-y = df_train['status'].copy()
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> You can access and download additional data of this and other companies in this industry by ticking the box below. </p>', unsafe_allow_html=True)
 
-# Conver to lgb datasets
-lgb_train = lgb.Dataset(X_train, y_train)
-lgb_test = lgb.Dataset(X_test, y_test)
+def get_table_download_link(df):
+            """Generates a link allowing the data in a given panda dataframe to be downloaded
+            in:  dataframe
+            out: href string
+            """
+            df = df.reset_index()
+            csv = df.to_csv(index=False)
+            b64 = base64.b64encode(
+                csv.encode()
+            ).decode()  # some strings <-> bytes conversions necessary here
+            return f'<a style="font-family:Avenir,Helvetica Neue,sans-serif;" href="data:file/csv;base64,{b64}" download="companies_export.csv">Download CSV</a>'
 
-# Custom Loss Function (Multiclass F1-Score)
-def evalerror(preds, df_train):
-    """
-    Custom multiclass f1-score
-    :param preds: Predictions for each observation
-    :param df_train: Training dataset
-    """
-    labels = df_train.get_label()
-    preds = preds.reshape(4, -1).T
-    preds = preds.argmax(axis = 1)
-    f_score = f1_score(labels , preds,  average = 'weighted')
-    return 'f1_score', f_score, True
+if st.checkbox('More Data', False): #Creates a checkbox to show/hide the data
+    st.write(clean_cb_ids)
+    st.markdown(get_table_download_link(clean_cb_ids), unsafe_allow_html=True)
 
-# Define Params
-params = {'boosting_type': 'gbdt',
-          'objective': 'multiclass',
-          'metric': 'multi_logloss',
-          'num_class':4,
-          'min_data_in_leaf':300,
-          'feature_fraction':0.8,
-          'bagging_fraction':0.8,
-          'bagging_freq':5,
-          'max_depth':8,
-          'num_leaves':70,
-          'learning_rate':0.04}
 
-# Train model
-gbm = lgb.train(params, 
-                lgb_train,
-                feval=evalerror,
-                num_boost_round=500,
-                valid_sets=[lgb_train, lgb_test],
-                early_stopping_rounds=10)
+st.write("")
+st.markdown("""<hr style="height:1px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
+
+
+# Comparison by status
+st.header('Exploratory Analysis')
+st.write("")
+
+# Grouped data
+# Create dataframe to compare by status
+status_comp = clean_cb[clean_cb.category_code.isin(category)].copy().sort_values(by="funding_total_usd", ascending=False)
+status_comp = status_comp[['status','normalized_name','founded_at','first_funding_at','funding_rounds','funding_total_usd']]
+status_comp.loc[:,'status'] = status_comp['status'].astype("object")
+status_comp.loc[:,'founded_at'] = status_comp['founded_at'].dt.year
+status_comp.loc[:,'first_funding_at'] = status_comp['first_funding_at'].dt.year
+status_comp.loc[:,'funding_rounds'] = status_comp.loc[:,'funding_rounds'].astype('int')
+status_comp.loc[:,'funding_total_usd'] = status_comp.loc[:,'funding_total_usd'].astype('int')
+status_comp = status_comp.rename(columns={"status":"Status",
+                                          "normalized_name":"Company",
+                                          "founded_at": "Founded In",
+                                          "first_funding_at":"Year of First Funding",
+                                          "funding_rounds":"Funding Rounds",
+                                          "funding_total_usd": "Funding Total in $US"})
+# Map categories from int to labels
+cats = ['Acquired', 'Closed', 'IPO', 'Operating']
+cat_map = dict(zip(np.sort(status_comp['Status'].unique()), cats))
+status_comp['Status'] = [cat_map[x] for x in status_comp['Status']]
+
+# Group data by status
+groupby_status = pd.DataFrame(status_comp.groupby(by='Status').median())
+
+st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> Select an attribute to compare across company status: </p>', unsafe_allow_html=True)
+#Comparison between Zones
+selected_col = st.selectbox("", groupby_status.columns[2:], key='variable_box',index=0) #Add a dropdown element
+
+# Plotly figure
+fig_group_stat = go.Figure(data=[go.Bar(x=groupby_status.index, y=groupby_status[selected_col])])
+fig_group_stat.update_traces(marker_color='#1c2d54', opacity=.99)
+fig_group_stat.update_layout(title_text='Median {} by Status'.format(selected_col))
+st.plotly_chart(fig_group_stat, use_container_width=True) 
+
+
+st.markdown("""<hr style="height:1px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
+st.write("")
 
 
 # SHAP
 #[0, 1, 2, 3] = ['acquired', 'closed', 'ipo', 'operating']
 # Relationships = "Representation of the people involved in the team for that startup"
-st.markdown('<h2 style="font-family:Avenir,Helvetica Neue,sans-serif;"> Startup Attribute’s Impact </h2>', unsafe_allow_html=True)
+st.header('Startup Attribute’s Impact')
 st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> On this particular industry, according to our data these are some of the attributes of startup that seem to have a greater impact on a given company status. </p>', unsafe_allow_html=True)
 
-explainer = shap.TreeExplainer(gbm)
-shap_values = explainer.shap_values(X)
-
+X = df_train.drop(['status','category_code'], axis=1).copy()
 
 shap.summary_plot(shap_values, X, class_names=["Acquired", "Closed", "IPO'd", "Operating"], max_display=5)
 st.set_option('deprecation.showPyplotGlobalUse', False)
 st.pyplot(bbox_inches='tight')
 plt.clf()
+
+st.write("")
+st.write("")
+st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> As we can see, different attributes contribute differently to classifying whether a company will be on each of the possible categories (status). For more details on how this is calculated please see the SHAP paper <a href="https://arxiv.org/pdf/1705.07874.pdf" target="_blank"> here</a>.</p>', unsafe_allow_html=True)
+
+st.text("")
+st.text("")
+st.write('<h4 style="font-family:Avenir,Helvetica Neue,sans-serif;"> For any suggestions on improvements please contact us at <a href="mailto:aipi@duke.edu">@duke.edu</a> </h4>', unsafe_allow_html=True)
