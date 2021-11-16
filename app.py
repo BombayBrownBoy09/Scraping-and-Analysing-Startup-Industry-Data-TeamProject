@@ -84,7 +84,7 @@ st.markdown(
 
 
 #Create initial titles/subtitles
-st.markdown('<h1 style="font-family:Avenir,Helvetica Neue,sans-serif;"> Startup Discovery Tool </h1>', unsafe_allow_html=True)
+st.markdown('<h1 style="font-family:Avenir,Helvetica Neue,sans-serif;"> Startup Industry Insights </h1>', unsafe_allow_html=True)
 st.text("")
 st.markdown('<p style="font-family:Avenir,Helvetica Neue,sans-serif;"> The following application provides insights into the specific impact different attributes of a startup contribute to either be acquired, IPO, close, or continue to operate. </p>', unsafe_allow_html=True)
 
