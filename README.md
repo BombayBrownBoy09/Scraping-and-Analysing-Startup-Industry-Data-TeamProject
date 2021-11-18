@@ -7,7 +7,7 @@ You can view the live app at [https://startups-510.herokuapp.com/](https://start
 ## Run locally
 
 ```
-pip install --upgrade streamlit
+pip install streamlit==0.87.0
 streamlit run https://raw.githubusercontent.com/omartinez182/510-Startup-Project/main/app.py
 ```
 
