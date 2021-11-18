@@ -56,3 +56,10 @@ gbm = lgb.train(params,
 # Relationships = "Representation of the people involved in the team for that startup"
 explainer = shap.TreeExplainer(gbm)
 shap_values = explainer.shap_values(X)
+
+# Save SHAP values
+with open("tech_shap.txt", "wb") as fp:   #Pickling
+  pickle.dump(shap_values, fp)
+
+with open("tech_shap.txt", "rb") as fp:   # Unpickling
+  d = pickle.load(fp)
