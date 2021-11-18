@@ -97,7 +97,8 @@ def load_data():
     """
     Function to load the primary data:
     """
-    clean_cb = pd.read_csv('Data/primary_data.csv', parse_dates=['funding_rounds', 'founded_at', 'first_funding_at','last_funding_at'])
+    URL_Primary = "https://raw.githubusercontent.com/omartinez182/510-Startup-Project/main/Data/primary_data.csv"
+    clean_cb = pd.read_csv(URL_Primary, parse_dates=['funding_rounds', 'founded_at', 'first_funding_at','last_funding_at'])
     return clean_cb
 
 #Load 10,000 rows of data & make copies to use with different sections
@@ -257,13 +258,13 @@ categories = st.selectbox("", ['Health', 'Tech'], key='category_selector', index
 if categories == 'Health':
     category = ['health', 'medical', 'biotech']
     # Load SHAP values for the selected category
-    with open("Data/SHAP/health_shap.txt", "rb") as fp:   # Unpickling
-        shap_values = pickle.load(fp)
+    URL_SH = "https://github.com/omartinez182/510-Startup-Project/blob/main/Data/SHAP/health_shap.txt?raw=true"
+    shap_values = pd.read_pickle(URL_SH)
 else:
     category = ['web','mobile','software','ecommerce']
     # Load SHAP values for the selected category
-    with open("Data/SHAP/tech_shap.txt", "rb") as fp:   # Unpickling
-        shap_values = pickle.load(fp)
+    URL_ST = "https://github.com/omartinez182/510-Startup-Project/blob/main/Data/SHAP/tech_shap.txt?raw=true"
+    shap_values = pd.read_pickle(URL_ST)
 
 # Filter dataframe based on the selected category
 df_train = df_clean_cb_gdp_rsi[df_clean_cb_gdp_rsi.category_code.isin(category)].copy()
@@ -290,7 +291,8 @@ def load_data_permalinks():
     """
     Function to load the permalinks data
     """
-    ids = pd.read_csv("Data/permalinks.csv")
+    URL_permalinks = "https://raw.githubusercontent.com/omartinez182/510-Startup-Project/main/Data/permalinks.csv"
+    ids = pd.read_csv(URL_permalinks)
     return ids
 
 ids = load_data_permalinks().copy()
