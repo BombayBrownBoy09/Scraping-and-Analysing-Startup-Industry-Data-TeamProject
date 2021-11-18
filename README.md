@@ -13,7 +13,9 @@ streamlit run https://raw.githubusercontent.com/omartinez182/510-Startup-Project
 
 ### Quick tutorial on how to use the app
 
-https://github.com/omartinez182/510-Startup-Project/blob/main/Demo/Startup_Tool_Demo.mov?raw=true
+
+https://user-images.githubusercontent.com/63601717/142460581-112caf0c-d4e2-48de-9c65-cf0ecf47c275.mp4
+
 
 ### Do you have any questions? Suggestions?
 
